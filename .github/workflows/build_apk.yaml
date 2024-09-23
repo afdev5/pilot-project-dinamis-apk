@@ -1,0 +1,53 @@
+name: Build Flutter APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: 'Nama aplikasi'
+        required: true
+        default: 'MyApp'
+      logo_url:
+        description: 'URL logo yang ingin digunakan (format .png)'
+        required: true
+        default: ''
+
+jobs:
+  build:
+    name: Build APK Android
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.2'  # Pastikan sesuai versi Flutter project Anda
+
+      - name: Update Android app name
+        run: |
+          sed -i "s/android:label=\"[^\"]*\"/android:label=\"${{ github.event.inputs.app_name }}\"/" android/app/src/main/AndroidManifest.xml
+
+      - name: Download and Replace App Icon
+        if: ${{ github.event.inputs.logo_url != '' }}
+        run: |
+          wget ${{ github.event.inputs.logo_url }} -O /tmp/ic_launcher.png
+          cp /tmp/ic_launcher.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          cp /tmp/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          cp /tmp/ic_launcher.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          cp /tmp/ic_launcher.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          cp /tmp/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v2
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
